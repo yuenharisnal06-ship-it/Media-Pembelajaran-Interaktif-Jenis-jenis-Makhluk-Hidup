@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Pembelajaran Interaktif: Makhluk Hidup</title>
+    <!-- Tailwind CSS untuk styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome untuk ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0fdf4; /* Warna hijau muda tema alam */
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* Animasi Flashcard */
+        .flashcard-container {
+            perspective: 1000px;
+        }
+        .flashcard {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            cursor: pointer;
+            position: relative;
+        }
+        .flashcard.is-flipped {
+            transform: rotateY(180deg);
+        }
+        .flashcard-face {
+            backface-visibility: hidden;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .flashcard-back {
+            transform: rotateY(180deg);
+        }
+
+        /* Navigasi Aktif */
+        .nav-btn.active {
+            background-color: #16a34a; /* Tailwind green-600 */
+            color: white;
+            border-color: #16a34a;
+        }
+
+        /* Transisi Halaman */
+        .section-page {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .section-page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Styling Drag & Drop */
+        .draggable {
+            cursor: grab;
+            transition: transform 0.2s;
+        }
+        .draggable:active {
+            cursor: grabbing;
+            transform: scale(1.05);
+        }
+        .dropzone {
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .dropzone.dragover {
+            background-color: #dcfce7; /* green-100 */
+            border-color: #16a34a; /* green-600 */
+        }
+
+        /* Garis Menjodohkan (Indikator pilihan) */
+        .match-btn.selected {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .match-btn.matched {
+            background-color: #10b981; /* emerald-500 */
+            color: white;
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+        .match-btn.wrong {
+            background-color: #ef4444; /* red-500 */
+            color: white;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #22c55e; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #16a34a; 
+        }
+
+        /* Modal / Toast Notification */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            margin-left: -125px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1000;
+            left: 50%;
+            bottom: 30px;
+            font-size: 17px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: opacity 0.5s, visibility 0.5s, bottom 0.5s;
+        }
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 50px;
+        }
+        
+        /* Certificate Print Mode */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #certificate-area, #certificate-area * {
+                visibility: visible;
+            }
+            #certificate-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body class="text-gray-800 antialiased flex flex-col min-h-screen">
+
+    <!-- Toast Notification Container -->
+    <div id="toast">Pesan Disini</div>
+
+    <!-- Halaman Login / Mulai -->
+    <div id="start-screen" class="fixed inset-0 bg-green-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center border-t-8 border-green-500">
+            <div class="mb-6">
+                <i class="fa-solid fa-leaf text-6xl text-green-500 mb-4 inline-block animate-bounce"></i>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Petualangan<br>Makhluk Hidup</h1>
+                <p class="text-gray-500">Belajar asyik mengenal berbagai jenis makhluk hidup di bumi!</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="student-name" class="block text-left text-sm font-medium text-gray-700 mb-1">Nama Pahlawan Bumi (Nama Kamu):</label>
+                    <input type="text" id="student-name" placeholder="Ketik nama lengkapmu di sini..." class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all" autocomplete="off">
+                </div>
+                <button onclick="app.startApp()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transform transition hover:-translate-y-1 hover:shadow-xl">
+                    Mulai Belajar! <i class="fa-solid fa-rocket ml-2"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aplikasi Utama (Tersembunyi Awalnya) -->
+    <div id="main-app" class="hidden flex-col h-screen w-full max-w-6xl mx-auto bg-white shadow-xl overflow-hidden md:flex-row">
+        
+        <!-- Sidebar Navigasi -->
+        <aside class="w-full md:w-64 bg-green-800 text-white flex flex-col">
+            <div class="p-6 bg-green-900 text-center">
+                <i class="fa-solid fa-earth-asia text-4xl text-green-400 mb-2"></i>
+                <h2 class="text-xl font-bold">Halo, <span id="display-name" class="text-green-300">Siswa</span>!</h2>
+                <div class="mt-2 text-sm bg-green-800 rounded-full py-1 px-3 inline-block">Skor Total: <span id="total-score-display" class="font-bold">0</span>/400</div>
+            </div>
+            
+            <nav class="flex-1 overflow-y-auto py-4 space-y-2 px-3 flex flex-row md:flex-col overflow-x-auto md:overflow-x-visible">
+                <button onclick="app.navigate('materi')" class="nav-btn active flex-shrink-0 w-full text-left px-4 py-3 rounded-lg border border-transparent hover:bg-green-700 transition flex items-center gap-3">
+                    <i class="fa-solid fa-book-open w-5 text-center"></i> <span>Materi (Flashcard)</span>
+                </button>
+                <button onclick="app.navigate('tf')" class="nav-btn flex-shrink-0 w-full text-left px-4 py-3 rounded-lg border border-transparent hover:bg-green-700 transition flex items-center gap-3">
+                    <i class="fa-solid fa-check-double w-5 text-center"></i> <span>Benar / Salah</span>
+                </button>
+                <button onclick="app.navigate('match')" class="nav-btn flex-shrink-0 w-full text-left px-4 py-3 rounded-lg border border-transparent hover:bg-green-700 transition flex items-center gap-3">
+                    <i class="fa-solid fa-link w-5 text-center"></i> <span>Menjodohkan</span>
+                </button>
+                <button onclick="app.navigate('game')" class="nav-btn flex-shrink-0 w-full text-left px-4 py-3 rounded-lg border border-transparent hover:bg-green-700 transition flex items-center gap-3">
+                    <i class="fa-solid fa-gamepad w-5 text-center"></i> <span>Game Klasifikasi</span>
+                </button>
+                <button onclick="app.navigate('quiz')" class="nav-btn flex-shrink-0 w-full text-left px-4 py-3 rounded-lg border border-transparent hover:bg-green-700 transition flex items-center gap-3">
+                    <i class="fa-solid fa-list-check w-5 text-center"></i> <span>Kuis Akhir</span>
+                </button>
+                <button onclick="app.navigate('cert')" class="nav-btn flex-shrink-0 w-full text-left px-4 py-3 rounded-lg border border-transparent hover:bg-green-700 transition flex items-center gap-3">
+                    <i class="fa-solid fa-certificate w-5 text-center"></i> <span>Sertifikat</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Area Konten Utama -->
+        <main class="flex-1 relative overflow-y-auto bg-gray-50 p-4 md:p-8 relative">
+            
+            <!-- SECTION: MATERI / FLASHCARD -->
+            <section id="sec-materi" class="section-page active">
+                <div class="mb-6">
+                    <h2 class="text-3xl font-bold text-green-700 mb-2"><i class="fa-solid fa-layer-group mr-2"></i>Mengenal Kingdom Makhluk Hidup</h2>
+                    <p class="text-gray-600">Klik kartu di bawah ini untuk melihat detail masing-masing kelompok (Kingdom) makhluk hidup!</p>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="flashcard-container">
+                    <!-- Flashcards akan digenerate via JS -->
+                </div>
+            </section>
+
+            <!-- SECTION: BENAR SALAH -->
+            <section id="sec-tf" class="section-page">
+                <div class="max-w-2xl mx-auto">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold text-blue-600 mb-2"><i class="fa-solid fa-scale-balanced mr-2"></i>Uji Fakta: Benar atau Salah?</h2>
+                        <p class="text-gray-600">Skor kamu: <span id="score-tf" class="font-bold text-blue-600">0</span> / 100</p>
+                    </div>
+
+                    <div id="tf-container" class="bg-white rounded-2xl shadow-lg p-6 md:p-10 text-center border-t-4 border-blue-500">
+                        <!-- Konten TF digenerate via JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: MENJODOHKAN -->
+            <section id="sec-match" class="section-page">
+                <div class="max-w-4xl mx-auto">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold text-purple-600 mb-2"><i class="fa-solid fa-handshake-angle mr-2"></i>Pasangkan Kata</h2>
+                        <p class="text-gray-600">Klik satu kotak di sebelah kiri, lalu klik pasangannya di sebelah kanan. Skor: <span id="score-match" class="font-bold text-purple-600">0</span> / 100</p>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row justify-between gap-8 items-center bg-white p-6 md:p-8 rounded-2xl shadow-lg">
+                        <!-- Kolom Kiri -->
+                        <div id="match-left" class="w-full md:w-5/12 space-y-4 flex flex-col">
+                        </div>
+                        
+                        <!-- Ikon Pemisah -->
+                        <div class="hidden md:block w-2/12 text-center text-gray-300">
+                            <i class="fa-solid fa-arrows-left-right text-4xl"></i>
+                        </div>
+
+                        <!-- Kolom Kanan -->
+                        <div id="match-right" class="w-full md:w-5/12 space-y-4 flex flex-col">
+                        </div>
+                    </div>
+                    <div class="text-center mt-6">
+                        <button onclick="app.matchModule.reset()" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition">Ulangi Menjodohkan</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: GAME KLASIFIKASI -->
+            <section id="sec-game" class="section-page">
+                <div class="text-center mb-6">
+                    <h2 class="text-3xl font-bold text-orange-500 mb-2"><i class="fa-solid fa-boxes-packing mr-2"></i>Game Klasifikasi</h2>
+                    <p class="text-gray-600">Tarik (Drag) gambar makhluk hidup ke dalam kotak kelompok yang benar! Skor: <span id="score-game" class="font-bold text-orange-600">0</span> / 100</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-lg border-t-4 border-orange-400">
+                    <!-- Area Drop / Kategori -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10" id="dropzones">
+                        <!-- Animalia -->
+                        <div class="dropzone bg-gray-50 border-4 border-dashed border-gray-300 rounded-xl p-4 min-h-[150px] flex flex-col items-center justify-start" data-category="hewan">
+                            <h3 class="font-bold text-lg text-gray-700 mb-3"><i class="fa-solid fa-paw text-orange-500 mr-2"></i>Hewan (Animalia)</h3>
+                            <div class="dropped-items flex flex-wrap gap-2 justify-center w-full"></div>
+                        </div>
+                        <!-- Plantae -->
+                        <div class="dropzone bg-gray-50 border-4 border-dashed border-gray-300 rounded-xl p-4 min-h-[150px] flex flex-col items-center justify-start" data-category="tumbuhan">
+                            <h3 class="font-bold text-lg text-gray-700 mb-3"><i class="fa-solid fa-tree text-green-500 mr-2"></i>Tumbuhan (Plantae)</h3>
+                            <div class="dropped-items flex flex-wrap gap-2 justify-center w-full"></div>
+                        </div>
+                        <!-- Fungi/Lainnya -->
+                        <div class="dropzone bg-gray-50 border-4 border-dashed border-gray-300 rounded-xl p-4 min-h-[150px] flex flex-col items-center justify-start" data-category="lainnya">
+                            <h3 class="font-bold text-lg text-gray-700 mb-3"><i class="fa-solid fa-microscope text-purple-500 mr-2"></i>Jamur & Bakteri</h3>
+                            <div class="dropped-items flex flex-wrap gap-2 justify-center w-full"></div>
+                        </div>
+                    </div>
+
+                    <!-- Area Item (Draggables) -->
+                    <div class="border-t-2 border-gray-100 pt-6">
+                        <p class="text-center text-sm text-gray-500 mb-4">Tarik item di bawah ini:</p>
+                        <div id="draggable-items" class="flex flex-wrap justify-center gap-4">
+                            <!-- Items digenerate via JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: KUIS -->
+            <section id="sec-quiz" class="section-page">
+                <div class="max-w-3xl mx-auto">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold text-red-600 mb-2"><i class="fa-solid fa-clipboard-question mr-2"></i>Kuis Evaluasi</h2>
+                        <p class="text-gray-600">Jawab pertanyaan berikut untuk mendapatkan nilai akhir. Skor: <span id="score-quiz" class="font-bold text-red-600">0</span> / 100</p>
+                    </div>
+
+                    <div id="quiz-container" class="bg-white rounded-2xl shadow-lg p-6 md:p-8 border-t-4 border-red-500">
+                         <!-- Quiz generated by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: SERTIFIKAT -->
+            <section id="sec-cert" class="section-page">
+                <div class="max-w-4xl mx-auto text-center" id="cert-locked">
+                    <i class="fa-solid fa-lock text-6xl text-gray-300 mb-4"></i>
+                    <h2 class="text-3xl font-bold text-gray-600 mb-2">Sertifikat Terkunci</h2>
+                    <p class="text-gray-500 mb-6">Kamu harus menyelesaikan semua tugas (Benar/Salah, Menjodohkan, Game, dan Kuis) dengan rata-rata total skor minimal <span class="font-bold text-green-600">80%</span> (Total skor minimal 320/400).</p>
+                    
+                    <div class="bg-white p-6 rounded-xl shadow inline-block w-full max-w-md mx-auto text-left">
+                        <h4 class="font-bold text-gray-700 mb-3 border-b pb-2">Status Penilaian Kamu:</h4>
+                        <ul class="space-y-2 text-sm text-gray-600">
+                            <li class="flex justify-between"><span>Benar/Salah:</span> <span id="stat-tf" class="font-semibold">0/100</span></li>
+                            <li class="flex justify-between"><span>Menjodohkan:</span> <span id="stat-match" class="font-semibold">0/100</span></li>
+                            <li class="flex justify-between"><span>Game Klasifikasi:</span> <span id="stat-game" class="font-semibold">0/100</span></li>
+                            <li class="flex justify-between"><span>Kuis Akhir:</span> <span id="stat-quiz" class="font-semibold">0/100</span></li>
+                            <li class="flex justify-between border-t pt-2 mt-2 text-lg font-bold"><span>Total Skor:</span> <span id="stat-total" class="text-green-600">0/400</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Template Sertifikat -->
+                <div id="cert-unlocked" class="hidden max-w-4xl mx-auto">
+                    <div class="mb-6 text-center no-print">
+                        <button onclick="window.print()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow mr-2">
+                            <i class="fa-solid fa-print mr-2"></i> Cetak / Simpan PDF
+                        </button>
+                    </div>
+
+                    <div id="certificate-area" class="relative bg-white border-[12px] border-double border-green-700 p-10 md:p-20 text-center shadow-2xl rounded-sm">
+                        <div class="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMTAiIGZpbGw9IiMyMmM1NWUiIG9wYWNpdHk9IjAuNSIvPjwvc3ZnPg==')] pointer-events-none"></div>
+                        
+                        <div class="relative z-10">
+                            <i class="fa-solid fa-award text-8xl text-yellow-500 mb-6 drop-shadow-md"></i>
+                            <h1 class="text-4xl md:text-5xl font-extrabold text-green-800 tracking-wider mb-2 uppercase">Sertifikat Penghargaan</h1>
+                            <p class="text-lg text-gray-600 uppercase tracking-widest mb-10 border-b border-gray-300 pb-4 inline-block">Pahlawan Lingkungan & Ahli Biologi Cilik</p>
+                            
+                            <p class="text-gray-600 mb-2">Diberikan dengan penuh kebanggaan kepada:</p>
+                            <h2 id="cert-name" class="text-4xl font-bold text-gray-800 mb-6 italic border-b-2 border-dashed border-gray-400 inline-block px-10 pb-2">Nama Siswa</h2>
+                            
+                            <p class="text-gray-700 max-w-2xl mx-auto leading-relaxed mb-12">
+                                Karena telah berhasil menyelesaikan evaluasi interaktif materi <b>"Jenis-jenis Makhluk Hidup"</b> dengan nilai kelulusan yang memuaskan (Skor: <span id="cert-score-final" class="font-bold"></span>/400). Teruslah belajar dan mencintai bumi kita!
+                            </p>
+                            
+                            <div class="flex justify-around items-center mt-12">
+                                <div class="text-center">
+                                    <div class="w-32 border-b border-gray-800 mb-2 mx-auto"></div>
+                                    <p class="font-bold text-gray-800">Guru Profesional</p>
+                                    <p class="text-sm text-gray-500">Instruktur</p>
+                                </div>
+                                <div class="w-24 h-24 bg-yellow-100 rounded-full border-4 border-yellow-500 flex items-center justify-center transform rotate-12">
+                                    <span class="font-bold text-yellow-600 text-center leading-tight">LULUS<br>100%</span>
+                                </div>
+                                <div class="text-center">
+                                    <div class="w-32 border-b border-gray-800 mb-2 mx-auto" id="cert-date-line"></div>
+                                    <p class="font-bold text-gray-800">Tanggal</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        // Core Application State and Utility
+        const app = {
+            studentName: "",
+            currentSection: "materi",
+            scores: {
+                tf: 0,
+                match: 0,
+                game: 0,
+                quiz: 0
+            },
+            
+            // Helper untuk memunculkan notifikasi (pengganti alert)
+            showToast: function(message, isSuccess = true) {
+                const toast = document.getElementById("toast");
+                toast.textContent = message;
+                toast.style.backgroundColor = isSuccess ? "#10b981" : "#ef4444";
+                toast.className = "show";
+                setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+            },
+
+            // Memulai aplikasi
+            startApp: function() {
+                const nameInput = document.getElementById("student-name").value.trim();
+                if(nameInput === "") {
+                    this.showToast("Ups! Masukkan namamu dulu ya.", false);
+                    return;
+                }
+                this.studentName = nameInput;
+                document.getElementById("display-name").textContent = this.studentName;
+                document.getElementById("cert-name").textContent = this.studentName;
+                
+                // Set Tanggal di sertifikat
+                const today = new Date();
+                const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                document.getElementById("cert-date-line").innerHTML = today.toLocaleDateString('id-ID', options);
+
+                // Sembunyikan layar awal, tampilkan app utama
+                document.getElementById("start-screen").style.display = "none";
+                document.getElementById("main-app").classList.remove("hidden");
+                document.getElementById("main-app").classList.add("flex");
+                
+                // Inisialisasi modul
+                this.initModules();
+            },
+
+            // Navigasi antar bagian
+            navigate: function(sectionId) {
+                // Update active button
+                document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+                const btnIndex = ['materi', 'tf', 'match', 'game', 'quiz', 'cert'].indexOf(sectionId);
+                if(btnIndex >= 0) {
+                    document.querySelectorAll('.nav-btn')[btnIndex].classList.add('active');
+                }
+
+                // Sembunyikan semua section
+                document.querySelectorAll('.section-page').forEach(sec => {
+                    sec.classList.remove('active');
+                });
+                
+                // Tampilkan section yang dituju
+                document.getElementById(`sec-${sectionId}`).classList.add('active');
+                this.currentSection = sectionId;
+
+                // Jika navigasi ke sertifikat, cek kelayakan
+                if(sectionId === 'cert') {
+                    this.checkCertificate();
+                }
+            },
+
+            updateTotalScore: function() {
+                const total = this.scores.tf + this.scores.match + this.scores.game + this.scores.quiz;
+                document.getElementById("total-score-display").textContent = total;
+                
+                // Update text di layar sertifikat (yang terkunci)
+                document.getElementById("stat-tf").textContent = `${this.scores.tf}/100`;
+                document.getElementById("stat-match").textContent = `${this.scores.match}/100`;
+                document.getElementById("stat-game").textContent = `${this.scores.game}/100`;
+                document.getElementById("stat-quiz").textContent = `${this.scores.quiz}/100`;
+                document.getElementById("stat-total").textContent = `${total}/400`;
+            },
+
+            checkCertificate: function() {
+                const total = this.scores.tf + this.scores.match + this.scores.game + this.scores.quiz;
+                const passed = total >= 320; // 80% dari 400
+                
+                if (passed) {
+                    document.getElementById("cert-locked").classList.add("hidden");
+                    document.getElementById("cert-unlocked").classList.remove("hidden");
+                    document.getElementById("cert-score-final").textContent = total;
+                    this.showToast("Selamat! Kamu memenuhi syarat untuk mendapatkan sertifikat!", true);
+                } else {
+                    document.getElementById("cert-locked").classList.remove("hidden");
+                    document.getElementById("cert-unlocked").classList.add("hidden");
+                }
+            },
+
+            initModules: function() {
+                this.flashcardModule.init();
+                this.tfModule.init();
+                this.matchModule.init();
+                this.gameModule.init();
+                this.quizModule.init();
+            },
+
+            // --- 1. MODUL FLASHCARD ---
+            flashcardModule: {
+                data: [
+                    { name: "Hewan (Animalia)", icon: "fa-hippo", color: "text-blue-500", desc: "Makhluk hidup yang dapat bergerak aktif, mencari makan sendiri (heterotrof), dan memiliki banyak sel.", ex: "Kucing, Harimau, Burung, Ikan" },
+                    { name: "Tumbuhan (Plantae)", icon: "fa-tree", color: "text-green-500", desc: "Makhluk hidup yang memiliki klorofil untuk membuat makanannya sendiri melalui fotosintesis (autotrof).", ex: "Pohon Mangga, Padi, Bunga Mawar" },
+                    { name: "Jamur (Fungi)", icon: "fa-cookie", color: "text-amber-600", desc: "Mirip tumbuhan tapi tidak punya klorofil. Menyerap nutrisi dari makhluk hidup lain atau sisa organisme.", ex: "Jamur Merang, Ragi, Jamur Kuping" },
+                    { name: "Monera (Bakteri)", icon: "fa-bacterium", color: "text-purple-500", desc: "Makhluk hidup bersel satu yang sangat kecil dan tidak memiliki membran inti sel (prokariotik).", ex: "Bakteri E.coli, Lactobacillus" },
+                    { name: "Protista", icon: "fa-disease", color: "text-teal-500", desc: "Makhluk hidup bersel satu atau banyak yang lebih kompleks dari bakteri (eukariotik). Ada yang mirip tumbuhan/hewan.", ex: "Amoeba, Paramecium, Alga" }
+                ],
+                init: function() {
+                    const container = document.getElementById("flashcard-container");
+                    container.innerHTML = "";
+                    
+                    this.data.forEach((item, index) => {
+                        const cardDiv = document.createElement('div');
+                        cardDiv.className = 'w-full h-64 flashcard-container';
+                        
+                        cardDiv.innerHTML = `
+                            <div class="flashcard w-full h-full rounded-2xl shadow-md transition-shadow hover:shadow-xl" onclick="this.classList.toggle('is-flipped')">
+                                <!-- FRONT -->
+                                <div class="flashcard-face bg-white border border-gray-100 rounded-2xl flex flex-col items-center justify-center p-6 text-center">
+                                    <i class="fa-solid ${item.icon} text-6xl ${item.color} mb-4"></i>
+                                    <h3 class="text-xl font-bold text-gray-800">${item.name}</h3>
+                                    <p class="text-sm text-gray-400 mt-2"><i class="fa-solid fa-hand-pointer mr-1"></i>Klik untuk membalik</p>
+                                </div>
+                                <!-- BACK -->
+                                <div class="flashcard-face flashcard-back bg-gray-800 text-white border border-gray-700 rounded-2xl flex flex-col items-center justify-center p-6 text-center">
+                                    <h3 class="text-lg font-bold text-${item.color.split('-')[1]}-300 mb-2">${item.name}</h3>
+                                    <p class="text-sm mb-4 leading-relaxed">${item.desc}</p>
+                                    <div class="bg-gray-700 w-full p-2 rounded text-xs">
+                                        <span class="text-gray-300">Contoh:</span><br>${item.ex}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        container.appendChild(cardDiv);
+                    });
+                }
+            },
+
+            // --- 2. MODUL BENAR SALAH ---
+            tfModule: {
+                questions: [
+                    { q: "Semua tumbuhan bernapas menggunakan paru-paru.", a: false, explanation: "Salah. Tumbuhan bernapas melalui stomata (mulut daun) dan lentisel." },
+                    { q: "Jamur (Fungi) tidak bisa berfotosintesis karena tidak memiliki zat hijau daun (klorofil).", a: true, explanation: "Benar. Jamur menyerap makanan dari lingkungannya." },
+                    { q: "Manusia dan harimau termasuk ke dalam kelompok kingdom Animalia (Hewan).", a: true, explanation: "Benar. Secara biologis, manusia masuk klasifikasi Animalia." },
+                    { q: "Bakteri adalah makhluk hidup bersel banyak (multiseluler).", a: false, explanation: "Salah. Bakteri adalah makhluk hidup bersel tunggal (uniseluler)." },
+                    { q: "Herbivora adalah sebutan untuk hewan yang memakan daging.", a: false, explanation: "Salah. Herbivora adalah pemakan tumbuhan. Pemakan daging adalah Karnivora." }
+                ],
+                currentIndex: 0,
+                correctCount: 0,
+                
+                init: function() {
+                    this.currentIndex = 0;
+                    this.correctCount = 0;
+                    this.renderQuestion();
+                },
+                
+                renderQuestion: function() {
+                    const container = document.getElementById("tf-container");
+                    if (this.currentIndex >= this.questions.length) {
+                        // Selesai
+                        const score = (this.correctCount / this.questions.length) * 100;
+                        app.scores.tf = score;
+                        app.updateTotalScore();
+                        document.getElementById("score-tf").textContent = score;
+                        
+                        container.innerHTML = `
+                            <div class="text-center py-8">
+                                <i class="fa-solid fa-flag-checkered text-6xl text-green-500 mb-4"></i>
+                                <h3 class="text-2xl font-bold mb-2">Evaluasi Benar/Salah Selesai!</h3>
+                                <p class="text-lg">Kamu menjawab dengan benar ${this.correctCount} dari ${this.questions.length} pertanyaan.</p>
+                                <button onclick="app.tfModule.init()" class="mt-6 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">Coba Lagi</button>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    const q = this.questions[this.currentIndex];
+                    container.innerHTML = `
+                        <div class="mb-4 text-sm font-bold text-gray-500">Pertanyaan ${this.currentIndex + 1} dari ${this.questions.length}</div>
+                        <h3 class="text-xl md:text-2xl font-medium text-gray-800 mb-8 leading-relaxed">"${q.q}"</h3>
+                        <div class="flex flex-col sm:flex-row justify-center gap-4 mb-4">
+                            <button onclick="app.tfModule.answer(true)" class="flex-1 py-4 px-6 rounded-xl text-white font-bold text-lg bg-green-500 hover:bg-green-600 shadow-md transition transform hover:scale-105"><i class="fa-solid fa-check mr-2"></i> BENAR</button>
+                            <button onclick="app.tfModule.answer(false)" class="flex-1 py-4 px-6 rounded-xl text-white font-bold text-lg bg-red-500 hover:bg-red-600 shadow-md transition transform hover:scale-105"><i class="fa-solid fa-xmark mr-2"></i> SALAH</button>
+                        </div>
+                        <div id="tf-feedback" class="hidden mt-6 p-4 rounded-lg text-left"></div>
+                    `;
+                },
+
+                answer: function(userAnswer) {
+                    const q = this.questions[this.currentIndex];
+                    const feedbackDiv = document.getElementById("tf-feedback");
+                    feedbackDiv.classList.remove("hidden");
+                    
+                    // Disable buttons
+                    const btns = document.querySelectorAll("#tf-container button");
+                    btns.forEach(b => b.disabled = true);
+
+                    if (userAnswer === q.a) {
+                        this.correctCount++;
+                        feedbackDiv.className = "mt-6 p-4 rounded-lg text-left bg-green-100 border border-green-300 text-green-800";
+                        feedbackDiv.innerHTML = `<b><i class="fa-solid fa-circle-check"></i> Tepat Sekali!</b> ${q.explanation}`;
+                    } else {
+                        feedbackDiv.className = "mt-6 p-4 rounded-lg text-left bg-red-100 border border-red-300 text-red-800";
+                        feedbackDiv.innerHTML = `<b><i class="fa-solid fa-circle-xmark"></i> Kurang Tepat.</b> ${q.explanation}`;
+                    }
+
+                    setTimeout(() => {
+                        this.currentIndex++;
+                        this.renderQuestion();
+                    }, 2500); // Lanjut otomatis setelah 2.5 detik
+                }
+            },
+
+            // --- 3. MODUL MENJODOHKAN ---
+            matchModule: {
+                pairs: [
+                    { id: 'm1', left: "Autotrof", right: "Bisa membuat makanan sendiri (cth: Tumbuhan)" },
+                    { id: 'm2', left: "Heterotrof", right: "Tidak bisa membuat makanan sendiri (cth: Hewan)" },
+                    { id: 'm3', left: "Karnivora", right: "Pemakan Daging" },
+                    { id: 'm4', left: "Spora", right: "Cara jamur berkembang biak" }
+                ],
+                leftSelected: null,
+                rightSelected: null,
+                matchesFound: 0,
+                
+                init: function() {
+                    this.reset();
+                },
+
+                reset: function() {
+                    this.leftSelected = null;
+                    this.rightSelected = null;
+                    this.matchesFound = 0;
+                    app.scores.match = 0;
+                    app.updateTotalScore();
+                    document.getElementById("score-match").textContent = "0";
+                    this.render();
+                },
+
+                // Acak array (Fisher-Yates)
+                shuffle: function(array) {
+                    let currentIndex = array.length,  randomIndex;
+                    while (currentIndex != 0) {
+                        randomIndex = Math.floor(Math.random() * currentIndex);
+                        currentIndex--;
+                        [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+                    }
+                    return array;
+                },
+
+                render: function() {
+                    const leftCol = document.getElementById("match-left");
+                    const rightCol = document.getElementById("match-right");
+                    leftCol.innerHTML = '';
+                    rightCol.innerHTML = '';
+
+                    // Buat array terpisah untuk diacak
+                    let leftItems = this.pairs.map(p => ({ id: p.id, text: p.left, side: 'left' }));
+                    let rightItems = this.pairs.map(p => ({ id: p.id, text: p.right, side: 'right' }));
+
+                    this.shuffle(leftItems);
+                    this.shuffle(rightItems);
+
+                    leftItems.forEach(item => {
+                        const btn = document.createElement('button');
+                        btn.className = 'match-btn w-full p-4 rounded-xl border-2 border-gray-200 bg-white text-gray-700 font-medium text-left hover:border-blue-400 transition cursor-pointer shadow-sm';
+                        btn.textContent = item.text;
+                        btn.dataset.id = item.id;
+                        btn.dataset.side = 'left';
+                        btn.onclick = () => this.selectItem(btn, item);
+                        leftCol.appendChild(btn);
+                    });
+
+                    rightItems.forEach(item => {
+                        const btn = document.createElement('button');
+                        btn.className = 'match-btn w-full p-4 rounded-xl border-2 border-gray-200 bg-white text-gray-700 font-medium text-left hover:border-blue-400 transition cursor-pointer shadow-sm';
+                        btn.textContent = item.text;
+                        btn.dataset.id = item.id;
+                        btn.dataset.side = 'right';
+                        btn.onclick = () => this.selectItem(btn, item);
+                        rightCol.appendChild(btn);
+                    });
+                },
+
+                selectItem: function(btnElement, itemData) {
+                    // Cek jika sudah matched
+                    if (btnElement.classList.contains('matched')) return;
+
+                    // Hapus seleksi sebelumnya di sisi yang sama
+                    const parent = btnElement.parentElement;
+                    Array.from(parent.children).forEach(child => {
+                        if(!child.classList.contains('matched')) {
+                            child.classList.remove('selected');
+                        }
+                    });
+
+                    // Set seleksi baru
+                    btnElement.classList.add('selected');
+
+                    if (itemData.side === 'left') {
+                        this.leftSelected = { el: btnElement, id: itemData.id };
+                    } else {
+                        this.rightSelected = { el: btnElement, id: itemData.id };
+                    }
+
+                    // Jika kedua sisi sudah dipilih, cek kecocokan
+                    if (this.leftSelected && this.rightSelected) {
+                        this.checkMatch();
+                    }
+                },
+
+                checkMatch: function() {
+                    const left = this.leftSelected;
+                    const right = this.rightSelected;
+
+                    // Kunci sementara (cegah klik brutal)
+                    const allBtns = document.querySelectorAll('.match-btn:not(.matched)');
+                    allBtns.forEach(b => b.style.pointerEvents = 'none');
+
+                    if (left.id === right.id) {
+                        // Cocok!
+                        app.showToast("Pasangan Cocok!", true);
+                        left.el.classList.replace('selected', 'matched');
+                        right.el.classList.replace('selected', 'matched');
+                        
+                        // Icon centang opsional
+                        left.el.innerHTML += ' <i class="fa-solid fa-check float-right mt-1"></i>';
+                        right.el.innerHTML += ' <i class="fa-solid fa-check float-right mt-1"></i>';
+
+                        this.matchesFound++;
+                        const score = (this.matchesFound / this.pairs.length) * 100;
+                        app.scores.match = score;
+                        document.getElementById("score-match").textContent = score;
+                        app.updateTotalScore();
+
+                        this.resetSelection(allBtns);
+
+                        if(this.matchesFound === this.pairs.length) {
+                            setTimeout(() => app.showToast("Luar Biasa! Menjodohkan selesai.", true), 500);
+                        }
+                    } else {
+                        // Tidak cocok
+                        left.el.classList.add('wrong');
+                        right.el.classList.add('wrong');
+                        app.showToast("Kurang tepat, coba lagi.", false);
+                        
+                        setTimeout(() => {
+                            left.el.classList.remove('selected', 'wrong');
+                            right.el.classList.remove('selected', 'wrong');
+                            this.resetSelection(allBtns);
+                        }, 800);
+                    }
+                },
+
+                resetSelection: function(btns) {
+                    this.leftSelected = null;
+                    this.rightSelected = null;
+                    btns.forEach(b => b.style.pointerEvents = 'auto');
+                }
+            },
+
+            // --- 4. MODUL GAME DRAG & DROP ---
+            gameModule: {
+                items: [
+                    { id: 'g1', name: "Sapi", category: "hewan", emoji: "🐄" },
+                    { id: 'g2', name: "Pohon Apel", category: "tumbuhan", emoji: "🍎" },
+                    { id: 'g3', name: "Jamur Tiram", category: "lainnya", emoji: "🍄" },
+                    { id: 'g4', name: "Bakteri", category: "lainnya", emoji: "🦠" },
+                    { id: 'g5', name: "Kupu-kupu", category: "hewan", emoji: "🦋" },
+                    { id: 'g6', name: "Bunga Matahari", category: "tumbuhan", emoji: "🌻" }
+                ],
+                placedCount: 0,
+                
+                init: function() {
+                    this.placedCount = 0;
+                    app.scores.game = 0;
+                    document.getElementById("score-game").textContent = "0";
+                    app.updateTotalScore();
+                    
+                    const container = document.getElementById("draggable-items");
+                    container.innerHTML = "";
+                    
+                    // Kosongkan dropzone
+                    document.querySelectorAll('.dropped-items').forEach(el => el.innerHTML = "");
+
+                    // Acak & render items
+                    const shuffledItems = [...this.items].sort(() => Math.random() - 0.5);
+                    
+                    shuffledItems.forEach(item => {
+                        const el = document.createElement('div');
+                        el.className = 'draggable bg-white border border-gray-300 shadow-sm rounded-lg py-2 px-4 flex items-center gap-2 cursor-grab select-none';
+                        el.draggable = true;
+                        el.id = item.id;
+                        el.dataset.category = item.category;
+                        el.innerHTML = `<span class="text-2xl">${item.emoji}</span> <span class="font-medium">${item.name}</span>`;
+                        
+                        // Drag Events
+                        el.addEventListener('dragstart', (e) => {
+                            e.dataTransfer.setData('text/plain', e.target.id);
+                            setTimeout(() => e.target.style.opacity = '0.5', 0);
+                        });
+                        el.addEventListener('dragend', (e) => {
+                            e.target.style.opacity = '1';
+                        });
+
+                        container.appendChild(el);
+                    });
+
+                    this.setupDropzones();
+                },
+
+                setupDropzones: function() {
+                    const dropzones = document.querySelectorAll('.dropzone');
+                    dropzones.forEach(dz => {
+                        // Hilangkan event listener lama jika ada (agar tidak double)
+                        const newDz = dz.cloneNode(true);
+                        dz.parentNode.replaceChild(newDz, dz);
+                        
+                        newDz.addEventListener('dragover', (e) => {
+                            e.preventDefault(); // allow drop
+                            newDz.classList.add('dragover');
+                        });
+                        newDz.addEventListener('dragleave', () => {
+                            newDz.classList.remove('dragover');
+                        });
+                        newDz.addEventListener('drop', (e) => {
+                            e.preventDefault();
+                            newDz.classList.remove('dragover');
+                            
+                            const itemId = e.dataTransfer.getData('text/plain');
+                            const itemEl = document.getElementById(itemId);
+                            if(!itemEl) return;
+
+                            const itemCat = itemEl.dataset.category;
+                            const dropCat = newDz.dataset.category;
+
+                            if (itemCat === dropCat) {
+                                // Benar
+                                itemEl.draggable = false;
+                                itemEl.className = 'bg-green-100 border border-green-300 rounded py-1 px-2 text-sm flex items-center gap-1 shadow-sm';
+                                newDz.querySelector('.dropped-items').appendChild(itemEl);
+                                app.showToast("Tepat sasaran!", true);
+                                
+                                this.placedCount++;
+                                const score = Math.floor((this.placedCount / this.items.length) * 100);
+                                app.scores.game = score;
+                                document.getElementById("score-game").textContent = score;
+                                app.updateTotalScore();
+
+                                if (this.placedCount === this.items.length) {
+                                    setTimeout(() => app.showToast("Hebat! Kamu berhasil mengklasifikasikan semuanya.", true), 1000);
+                                }
+                            } else {
+                                // Salah
+                                app.showToast("Oops, kategorinya salah. Coba lagi!", false);
+                            }
+                        });
+                    });
+                }
+            },
+
+            // --- 5. MODUL KUIS AKHIR ---
+            quizModule: {
+                questions: [
+                    { q: "Berikut ini yang BUKAN termasuk makhluk hidup adalah...", opts: ["Pohon Pisang", "Batu Bara", "Bakteri", "Manusia"], a: 1 },
+                    { q: "Makhluk hidup yang berperan sebagai pengurai (dekomposer) dalam ekosistem biasanya berasal dari kelompok...", opts: ["Tumbuhan dan Hewan", "Hewan dan Manusia", "Jamur dan Bakteri", "Protista dan Tumbuhan"], a: 2 },
+                    { q: "Kemampuan makhluk hidup untuk menyesuaikan diri dengan lingkungannya disebut...", opts: ["Adaptasi", "Fotosintesis", "Respirasi", "Berkembang biak"], a: 0 },
+                    { q: "Ciri utama dari Kingdom Plantae (Tumbuhan) yang membedakannya dari Kingdom Animalia (Hewan) adalah...", opts: ["Dapat bergerak bebas", "Memiliki sel darah merah", "Dapat membuat makanan sendiri (fotosintesis)", "Memerlukan oksigen untuk bernapas"], a: 2 },
+                    { q: "Organisme mikroskopis bersel tunggal tanpa membran inti (prokariotik) digolongkan dalam kingdom...", opts: ["Fungi", "Plantae", "Protista", "Monera"], a: 3 }
+                ],
+                currentQ: 0,
+                score: 0,
+                
+                init: function() {
+                    this.currentQ = 0;
+                    this.score = 0;
+                    app.scores.quiz = 0;
+                    document.getElementById("score-quiz").textContent = "0";
+                    app.updateTotalScore();
+                    this.renderQ();
+                },
+
+                renderQ: function() {
+                    const container = document.getElementById("quiz-container");
+                    if (this.currentQ >= this.questions.length) {
+                        // Selesai kuis
+                        const finalScore = (this.score / this.questions.length) * 100;
+                        app.scores.quiz = finalScore;
+                        app.updateTotalScore();
+                        document.getElementById("score-quiz").textContent = finalScore;
+                        
+                        container.innerHTML = `
+                            <div class="text-center py-6">
+                                <i class="fa-solid fa-star text-6xl text-yellow-400 mb-4 animate-spin-slow"></i>
+                                <h3 class="text-2xl font-bold text-gray-800 mb-2">Kuis Selesai!</h3>
+                                <p class="text-gray-600 mb-6">Skor Kuis kamu: ${finalScore}</p>
+                                <button onclick="app.navigate('cert')" class="px-6 py-3 bg-red-500 text-white font-bold rounded-xl shadow hover:bg-red-600 transition">Lihat Hasil Akhir / Sertifikat</button>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    const qData = this.questions[this.currentQ];
+                    let optsHtml = '';
+                    qData.opts.forEach((opt, idx) => {
+                        optsHtml += `<button onclick="app.quizModule.answer(${idx})" class="w-full text-left p-4 mb-3 border border-gray-300 rounded-xl hover:bg-red-50 hover:border-red-400 transition font-medium text-gray-700">${String.fromCharCode(65+idx)}. ${opt}</button>`;
+                    });
+
+                    container.innerHTML = `
+                        <div class="mb-2 text-sm text-gray-500 font-bold">Soal ${this.currentQ + 1} dari ${this.questions.length}</div>
+                        <h3 class="text-xl text-gray-800 font-semibold mb-6">${qData.q}</h3>
+                        <div class="flex flex-col">
+                            ${optsHtml}
+                        </div>
+                    `;
+                },
+
+                answer: function(selectedIdx) {
+                    const qData = this.questions[this.currentQ];
+                    if (selectedIdx === qData.a) {
+                        this.score++;
+                        app.showToast("Jawaban Benar!", true);
+                    } else {
+                        app.showToast(`Salah. Jawaban yang benar adalah: ${qData.opts[qData.a]}`, false);
+                    }
+                    
+                    this.currentQ++;
+                    setTimeout(() => this.renderQ(), 800); // jeda sebentar sebelum ganti soal
+                }
+            }
+        };
+
+        // Initialize prevent default untuk drag and drop di document agar tidak sengaja membuka file
+        document.addEventListener('dragover', (e) => e.preventDefault());
+        document.addEventListener('drop', (e) => e.preventDefault());
+        
+    </script>
+</body>
+</html>
